@@ -1,0 +1,27 @@
+services:
+  api:
+    build: ./api
+    container_name: dnd-dice-api
+    restart: unless-stopped
+    ports:
+      - "35432:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/dice')"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  frontend:
+    build: ./frontend
+    container_name: dnd-dice-frontend
+    restart: unless-stopped
+    ports:
+      - "35431:80"
+    depends_on:
+      api:
+        condition: service_healthy
+
+networks:
+  default:
+    name: dnd-dice-network

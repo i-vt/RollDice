@@ -1,0 +1,1429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Arcane Dice — DnD Roller</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Cinzel+Decorative:wght@700;900&family=IM+Fell+English:ital@0;1&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --bg:#0c0a08;--bg2:#141009;--bg3:#1c160f;--bg4:#241d14;
+  --border:#3a2b18;--border2:#4f3d22;
+  --gold:#c9a84c;--gold-l:#e8c97a;--gold-d:#7a5e28;
+  --red:#8b1a1a;--red-b:#c0392b;--red-l:#e05050;
+  --ink:#c8b89a;--ink2:#9a8a6a;--ink3:#5a4e38;
+  --glow:rgba(201,168,76,.15);
+  --tray-bg:rgba(8,6,4,.7);
+  --panel:rgba(20,16,9,.92);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--ink);font-family:'IM Fell English',serif;min-height:100vh;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse at 50% 0%,rgba(100,60,10,.18) 0%,transparent 65%),radial-gradient(ellipse at center,transparent 50%,rgba(0,0,0,.6) 100%);pointer-events:none;z-index:0}
+
+/* ── layout ── */
+.app{position:relative;z-index:1;max-width:1060px;margin:0 auto;padding:0 20px 80px}
+
+/* ── header ── */
+header{text-align:center;padding:36px 0 24px;position:relative}
+header::after{content:'';display:block;height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent);margin-top:22px}
+.hdr-eyebrow{font-family:'Cinzel',serif;font-size:10px;letter-spacing:7px;color:var(--gold-d);text-transform:uppercase;margin-bottom:8px}
+h1{font-family:'Cinzel Decorative',serif;font-size:clamp(24px,5vw,46px);font-weight:900;color:var(--gold-l);text-shadow:0 0 50px rgba(201,168,76,.45);letter-spacing:2px;line-height:1.1}
+.hdr-sub{font-style:italic;color:var(--ink3);font-size:14px;margin-top:6px}
+.corner{position:absolute;width:52px;height:52px;opacity:.3}
+.corner svg{width:100%;height:100%}
+.corner-tl{top:28px;left:0}.corner-tr{top:28px;right:0;transform:scaleX(-1)}
+
+/* ── tabs ── */
+.tabs{display:flex;gap:2px;margin:18px 0 0;border-bottom:1px solid var(--border);overflow-x:auto;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{padding:9px 18px;font-family:'Cinzel',serif;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--ink3);cursor:pointer;border:none;background:none;border-bottom:2px solid transparent;margin-bottom:-1px;white-space:nowrap;transition:all .18s}
+.tab:hover{color:var(--ink2)}
+.tab.active{color:var(--gold-l);border-bottom-color:var(--gold)}
+.tab-panel{display:none;padding-top:24px}
+.tab-panel.active{display:block}
+
+/* ── dice palette ── */
+.section-label{font-family:'Cinzel',serif;font-size:10px;letter-spacing:4px;color:var(--ink3);text-transform:uppercase;margin-bottom:12px}
+.palette{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-bottom:20px}
+.die-btn{position:relative;cursor:pointer;border:none;background:none;padding:0;outline:none;transition:transform .12s}
+.die-btn:hover{transform:translateY(-4px) scale(1.05)}
+.die-btn:active{transform:scale(.93)}
+.die-inner{position:relative;width:72px;height:72px;display:flex;align-items:center;justify-content:flex-end;flex-direction:column;padding-bottom:9px;transition:filter .18s}
+.die-btn:hover .die-inner{filter:brightness(1.3) drop-shadow(0 4px 12px rgba(201,168,76,.35))}
+.die-btn.active .die-inner{filter:brightness(1.4) drop-shadow(0 0 14px rgba(201,168,76,.5))}
+.die-svg{position:absolute;top:0;left:0;width:100%;height:100%}
+.die-lbl{font-family:'Cinzel Decorative',serif;font-size:13px;font-weight:700;color:#fff;text-shadow:0 1px 5px rgba(0,0,0,.9);position:relative;z-index:2;line-height:1}
+.badge{position:absolute;top:-5px;right:-5px;width:21px;height:21px;background:var(--red-b);border-radius:50%;font-family:'Cinzel',serif;font-size:11px;font-weight:600;color:#fff;display:flex;align-items:center;justify-content:center;border:1px solid var(--red);box-shadow:0 0 8px rgba(192,57,43,.7);opacity:0;transform:scale(0);transition:all .2s;z-index:10}
+.die-btn.active .badge{opacity:1;transform:scale(1)}
+
+/* palette controls */
+.palette-ctrl{display:flex;gap:8px;justify-content:center;margin-bottom:18px;flex-wrap:wrap}
+.pctrl-btn{background:var(--bg3);border:1px solid var(--border);border-radius:3px;padding:5px 12px;font-family:'Cinzel',serif;font-size:10px;letter-spacing:1px;color:var(--ink3);cursor:pointer;transition:all .15s}
+.pctrl-btn:hover{border-color:var(--gold-d);color:var(--gold)}
+
+/* ── input row ── */
+.input-row{display:flex;gap:10px;align-items:stretch;margin-bottom:8px}
+.notation-wrap{flex:1;position:relative}
+.notation-input{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:4px;padding:13px 16px;font-family:'Cinzel',serif;font-size:17px;color:var(--gold-l);letter-spacing:2px;outline:none;transition:border-color .2s,box-shadow .2s}
+.notation-input:focus{border-color:var(--gold);box-shadow:0 0 18px var(--glow)}
+.notation-input::placeholder{color:var(--ink3);font-size:13px;letter-spacing:1px}
+.label-input{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:4px;padding:8px 14px;font-family:'IM Fell English',serif;font-style:italic;font-size:14px;color:var(--ink);outline:none;margin-bottom:10px;transition:border-color .2s}
+.label-input:focus{border-color:var(--gold-d)}
+.label-input::placeholder{color:var(--ink3)}
+
+/* modifier row */
+.mod-row{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap;align-items:center}
+.mod-lbl{font-family:'Cinzel',serif;font-size:9px;letter-spacing:2px;color:var(--ink3);align-self:center}
+.mod-btn{background:var(--bg3);border:1px solid var(--border);border-radius:3px;padding:4px 10px;font-family:'Cinzel',serif;font-size:11px;color:var(--ink3);cursor:pointer;transition:all .14s}
+.mod-btn:hover{border-color:var(--gold-d);color:var(--gold)}
+
+/* roll button */
+.roll-btn{background:linear-gradient(160deg,#6e1616,#9e2020 45%,#6e1616);border:1px solid var(--red-b);border-radius:4px;padding:13px 28px;font-family:'Cinzel Decorative',serif;font-size:15px;font-weight:700;color:#fff;cursor:pointer;letter-spacing:2px;white-space:nowrap;flex-shrink:0;transition:all .18s;box-shadow:0 0 18px rgba(139,26,26,.4),inset 0 1px 0 rgba(255,255,255,.09)}
+.roll-btn:hover{background:linear-gradient(160deg,#8b2020,#c0392b 45%,#8b2020);box-shadow:0 0 28px rgba(192,57,43,.6),inset 0 1px 0 rgba(255,255,255,.13);transform:translateY(-1px)}
+.roll-btn:active{transform:translateY(0)}
+.roll-btn:disabled{opacity:.45;cursor:not-allowed;transform:none}
+
+/* presets */
+.presets{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:20px}
+.preset-btn{background:transparent;border:1px solid var(--border);border-radius:3px;padding:5px 11px;font-family:'Cinzel',serif;font-size:10px;color:var(--ink3);cursor:pointer;transition:all .14s;letter-spacing:.8px}
+.preset-btn:hover{border-color:var(--gold-d);color:var(--gold);background:var(--glow)}
+
+/* ── stage ── */
+.sep{height:1px;background:linear-gradient(90deg,transparent,var(--border),transparent);margin:18px 0}
+#stage{min-height:220px;display:flex;flex-direction:column;align-items:center;justify-content:center;margin:0 0 20px;position:relative}
+.stage-idle{text-align:center;color:var(--ink3);font-style:italic;font-size:14px}
+.stage-idle span{display:block;font-size:32px;opacity:.25;margin-bottom:6px}
+.loading-text{font-family:'Cinzel',serif;font-size:12px;letter-spacing:3px;color:var(--gold-d);animation:blink 1s ease-in-out infinite}
+@keyframes blink{0%,100%{opacity:.35}50%{opacity:1}}
+
+/* canvas wrapper */
+#diceCanvas{display:block;border-radius:6px;background:transparent}
+.canvas-wrap{position:relative;margin-bottom:16px}
+.canvas-wrap canvas{display:block}
+
+/* result panel */
+.result-panel{background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:20px 28px;text-align:center;position:relative;overflow:hidden;width:100%}
+.result-panel::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--gold),transparent)}
+.res-lbl{font-style:italic;color:var(--ink3);font-size:12px;margin-bottom:2px}
+.res-notation{font-family:'Cinzel',serif;font-size:11px;letter-spacing:2px;color:var(--gold-d);margin-bottom:8px}
+.res-total{font-family:'Cinzel Decorative',serif;font-size:clamp(48px,10vw,80px);font-weight:900;color:var(--gold-l);text-shadow:0 0 50px rgba(201,168,76,.5);line-height:1;animation:popIn .35s cubic-bezier(.175,.885,.32,1.275)}
+.res-total.nat-max{color:#ffe97a;text-shadow:0 0 40px rgba(255,220,80,.7),0 0 80px rgba(201,168,76,.4)}
+.res-total.nat-min{color:var(--red-l);text-shadow:0 0 30px rgba(224,80,80,.6)}
+.res-break{font-style:italic;color:var(--ink3);font-size:14px;margin-top:6px}
+@keyframes popIn{from{transform:scale(.55);opacity:0}to{transform:scale(1);opacity:1}}
+
+/* rolled dice display strip */
+.dice-strip{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-bottom:14px}
+.die-result{display:flex;flex-direction:column;align-items:center;gap:4px;animation:dieIn .3s ease both}
+@keyframes dieIn{from{opacity:0;transform:translateY(-8px) scale(.85)}to{opacity:1;transform:none}}
+
+/* ── history ── */
+.history-wrap{margin-top:28px}
+.history-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.history-list{display:flex;flex-direction:column;gap:5px;max-height:260px;overflow-y:auto;padding-right:3px}
+.history-list::-webkit-scrollbar{width:3px}
+.history-list::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+.history-item{display:flex;align-items:center;justify-content:space-between;background:var(--bg3);border:1px solid var(--border);border-radius:4px;padding:7px 13px;cursor:pointer;transition:all .14s;animation:fadeSlide .25s ease}
+@keyframes fadeSlide{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+.history-item:hover{border-color:var(--gold-d);background:var(--glow)}
+.h-left{display:flex;flex-direction:column;gap:1px}
+.h-notation{font-family:'Cinzel',serif;font-size:11px;letter-spacing:1px;color:var(--gold-d)}
+.h-lbl{font-style:italic;font-size:11px;color:var(--ink3)}
+.h-break{font-style:italic;font-size:10px;color:var(--ink3)}
+.h-total{font-family:'Cinzel Decorative',serif;font-size:20px;font-weight:700;color:var(--gold)}
+.h-clear{background:transparent;border:1px solid var(--border);border-radius:3px;padding:4px 10px;font-family:'Cinzel',serif;font-size:9px;letter-spacing:1px;color:var(--ink3);cursor:pointer;transition:all .14s}
+.h-clear:hover{border-color:var(--red);color:var(--red-b)}
+
+/* ── COMBAT TRACKER ── */
+.combatants{display:flex;flex-direction:column;gap:6px;margin-bottom:16px}
+.combatant-row{display:flex;gap:8px;align-items:center;background:var(--bg3);border:1px solid var(--border);border-radius:4px;padding:8px 12px;transition:all .15s;position:relative}
+.combatant-row.active-turn{border-color:var(--gold);box-shadow:0 0 12px var(--glow)}
+.combatant-row.active-turn::before{content:'▶';position:absolute;left:-18px;color:var(--gold);font-size:10px}
+.comb-init{width:44px;padding:4px 6px;background:var(--bg2);border:1px solid var(--border);border-radius:3px;font-family:'Cinzel',serif;font-size:14px;color:var(--gold-l);text-align:center;outline:none}
+.comb-init:focus{border-color:var(--gold)}
+.comb-name{flex:1;padding:4px 8px;background:var(--bg2);border:1px solid var(--border);border-radius:3px;font-family:'IM Fell English',serif;font-size:14px;color:var(--ink);outline:none}
+.comb-name:focus{border-color:var(--gold-d)}
+.hp-wrap{display:flex;align-items:center;gap:4px}
+.hp-cur{width:46px;padding:4px 6px;background:var(--bg2);border:1px solid var(--border);border-radius:3px;font-family:'Cinzel',serif;font-size:13px;color:#6fcf6f;text-align:center;outline:none}
+.hp-cur:focus{border-color:#6fcf6f}
+.hp-max{width:46px;padding:4px 6px;background:var(--bg2);border:1px solid var(--border);border-radius:3px;font-family:'Cinzel',serif;font-size:13px;color:var(--ink2);text-align:center;outline:none}
+.hp-max:focus{border-color:var(--gold-d)}
+.hp-sep{color:var(--ink3);font-size:12px}
+.hp-bar-wrap{width:70px;height:6px;background:var(--bg);border-radius:3px;overflow:hidden;flex-shrink:0}
+.hp-bar{height:100%;border-radius:3px;transition:width .3s,background .3s}
+.comb-ac{width:38px;padding:4px 5px;background:var(--bg2);border:1px solid var(--border);border-radius:3px;font-family:'Cinzel',serif;font-size:12px;color:#7ab4e8;text-align:center;outline:none}
+.comb-ac:focus{border-color:#7ab4e8}
+.comb-type{padding:3px 7px;font-family:'Cinzel',serif;font-size:9px;letter-spacing:1px;border-radius:3px;border:1px solid var(--border);background:var(--bg2);color:var(--ink3);cursor:pointer;outline:none}
+.type-pc{border-color:#4a8a4a;color:#6fcf6f;background:rgba(74,138,74,.1)}
+.type-enemy{border-color:#8a2020;color:#e05050;background:rgba(138,32,32,.1)}
+.type-npc{border-color:#6a5a20;color:#c9a84c;background:rgba(106,90,32,.1)}
+.comb-dmg-btn{padding:3px 8px;font-family:'Cinzel',serif;font-size:10px;color:#e05050;border:1px solid #8a2020;background:rgba(138,32,32,.1);border-radius:3px;cursor:pointer;transition:all .14s}
+.comb-dmg-btn:hover{background:rgba(192,57,43,.2)}
+.comb-heal-btn{padding:3px 8px;font-family:'Cinzel',serif;font-size:10px;color:#6fcf6f;border:1px solid #4a8a4a;background:rgba(74,138,74,.1);border-radius:3px;cursor:pointer;transition:all .14s}
+.comb-heal-btn:hover{background:rgba(74,138,74,.2)}
+.comb-del{padding:3px 8px;font-family:'Cinzel',serif;font-size:11px;color:var(--ink3);border:1px solid var(--border);background:transparent;border-radius:3px;cursor:pointer;transition:all .14s;flex-shrink:0}
+.comb-del:hover{color:var(--red-b);border-color:var(--red)}
+.combat-controls{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;align-items:center}
+.cc-btn{padding:7px 16px;font-family:'Cinzel',serif;font-size:11px;letter-spacing:1px;border-radius:3px;cursor:pointer;transition:all .15s;border:1px solid}
+.cc-btn-gold{color:var(--gold);border-color:var(--gold-d);background:transparent}
+.cc-btn-gold:hover{background:var(--glow)}
+.cc-btn-red{color:var(--red-b);border-color:var(--red);background:transparent}
+.cc-btn-red:hover{background:rgba(139,26,26,.15)}
+.cc-btn-green{color:#6fcf6f;border-color:#4a8a4a;background:transparent}
+.cc-btn-green:hover{background:rgba(74,138,74,.15)}
+.round-display{font-family:'Cinzel Decorative',serif;font-size:16px;color:var(--gold-l);background:var(--bg3);border:1px solid var(--border);border-radius:4px;padding:6px 16px;margin-left:auto}
+.comb-row-fields{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+
+/* ── CONDITIONS ── */
+.conditions-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;margin-bottom:20px}
+.cond-card{background:var(--bg3);border:1px solid var(--border);border-radius:5px;padding:10px 12px;cursor:pointer;transition:all .15s;position:relative;overflow:hidden}
+.cond-card:hover{border-color:var(--gold-d);transform:translateY(-1px)}
+.cond-card.active{border-color:var(--gold);box-shadow:0 0 10px var(--glow)}
+.cond-card.active::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--gold),transparent)}
+.cond-name{font-family:'Cinzel',serif;font-size:12px;font-weight:600;color:var(--gold-l);margin-bottom:4px}
+.cond-desc{font-style:italic;font-size:11px;color:var(--ink3);line-height:1.4}
+.cond-icon{font-size:18px;margin-bottom:4px}
+.active-conditions{background:var(--bg3);border:1px solid var(--border);border-radius:5px;padding:14px 18px;margin-bottom:16px}
+.active-cond-list{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}
+.active-cond-tag{display:inline-flex;align-items:center;gap:5px;background:rgba(201,168,76,.12);border:1px solid var(--gold-d);border-radius:3px;padding:3px 8px;font-family:'Cinzel',serif;font-size:11px;color:var(--gold);cursor:pointer}
+.active-cond-tag:hover{background:rgba(192,57,43,.15);border-color:var(--red);color:var(--red-b)}
+
+/* ── TOOLS TAB ── */
+.tools-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px}
+.tool-card{background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:18px 20px}
+.tool-card h3{font-family:'Cinzel',serif;font-size:13px;letter-spacing:2px;color:var(--gold);text-transform:uppercase;margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+.tool-row{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+.tool-label{font-family:'Cinzel',serif;font-size:10px;letter-spacing:1px;color:var(--ink3);width:90px;flex-shrink:0}
+.tool-input{flex:1;background:var(--bg2);border:1px solid var(--border);border-radius:3px;padding:5px 9px;font-family:'Cinzel',serif;font-size:13px;color:var(--gold-l);outline:none;transition:border-color .15s}
+.tool-input:focus{border-color:var(--gold-d)}
+.tool-select{flex:1;background:var(--bg2);border:1px solid var(--border);border-radius:3px;padding:5px 9px;font-family:'Cinzel',serif;font-size:11px;color:var(--ink);outline:none;cursor:pointer}
+.tool-select:focus{border-color:var(--gold-d)}
+.tool-result{background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:10px 14px;margin-top:10px;font-family:'Cinzel',serif;font-size:13px;color:var(--gold-l);min-height:40px;line-height:1.5}
+.tool-btn{padding:6px 16px;font-family:'Cinzel',serif;font-size:11px;letter-spacing:1px;color:var(--gold);border:1px solid var(--gold-d);background:transparent;border-radius:3px;cursor:pointer;transition:all .15s;white-space:nowrap}
+.tool-btn:hover{background:var(--glow)}
+.big-result{font-family:'Cinzel Decorative',serif;font-size:32px;font-weight:700;color:var(--gold-l);display:block;text-align:center;margin:8px 0}
+.result-sub{font-style:italic;font-size:12px;color:var(--ink3);text-align:center;display:block}
+
+/* ── API info ── */
+.api-footer{text-align:center;margin-top:40px;padding-top:18px;border-top:1px solid var(--border)}
+.api-footer p{font-style:italic;color:var(--ink3);font-size:12px;margin-bottom:8px}
+.api-pill{display:inline-flex;align-items:center;gap:6px;background:var(--bg3);border:1px solid var(--border);border-radius:20px;padding:5px 14px;font-family:'Cinzel',serif;font-size:10px;letter-spacing:1px;color:var(--ink3);text-decoration:none;transition:all .14s}
+.api-pill:hover{border-color:var(--gold-d);color:var(--gold)}
+.api-pill .dot{width:6px;height:6px;background:var(--gold);border-radius:50%;box-shadow:0 0 5px var(--gold)}
+
+/* toast */
+.toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(80px);background:#3a0f0f;border:1px solid var(--red);border-radius:4px;padding:11px 22px;font-style:italic;color:#e88;font-size:13px;z-index:9999;transition:transform .28s ease;max-width:320px;text-align:center}
+.toast.show{transform:translateX(-50%) translateY(0)}
+
+/* particles */
+.particle{position:absolute;width:4px;height:4px;border-radius:50%;animation:floatUp .85s ease-out forwards;pointer-events:none}
+@keyframes floatUp{0%{opacity:1;transform:translate(0,0) scale(1)}100%{opacity:0;transform:translate(var(--tx),-65px) scale(.25)}}
+
+/* util */
+.flex{display:flex}.gap8{gap:8px}.mt8{margin-top:8px}.mt14{margin-top:14px}
+input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
+input[type=number]{-moz-appearance:textfield}
+
+/* right-click menu */
+.ctx-menu{position:fixed;background:var(--bg3);border:1px solid var(--border);border-radius:4px;padding:4px 0;z-index:9998;min-width:160px;box-shadow:0 8px 24px rgba(0,0,0,.7)}
+.ctx-item{padding:7px 16px;font-family:'Cinzel',serif;font-size:11px;letter-spacing:.8px;color:var(--ink2);cursor:pointer;transition:background .12s}
+.ctx-item:hover{background:var(--glow);color:var(--gold)}
+.ctx-sep{height:1px;background:var(--border);margin:3px 0}
+
+@media(max-width:580px){
+  .input-row{flex-direction:column}.roll-btn{width:100%}
+  .comb-row-fields{gap:4px}
+  .hp-bar-wrap{display:none}
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+<header>
+  <div class="corner corner-tl"><svg viewBox="0 0 52 52" fill="none"><path d="M4 48 L4 4 L48 4" stroke="#c9a84c" stroke-width="1.5"/><path d="M4 30 L22 4" stroke="#c9a84c" stroke-width=".7" opacity=".5"/><circle cx="4" cy="4" r="2.5" fill="#c9a84c"/></svg></div>
+  <div class="corner corner-tr"><svg viewBox="0 0 52 52" fill="none"><path d="M4 48 L4 4 L48 4" stroke="#c9a84c" stroke-width="1.5"/><path d="M4 30 L22 4" stroke="#c9a84c" stroke-width=".7" opacity=".5"/><circle cx="4" cy="4" r="2.5" fill="#c9a84c"/></svg></div>
+  <p class="hdr-eyebrow">✦ Arcane Dice ✦</p>
+  <h1>The Dice Vault</h1>
+  <p class="hdr-sub">Roll the bones. Seal your fate.</p>
+</header>
+
+<div class="tabs" role="tablist">
+  <button class="tab active" onclick="switchTab('roller',this)">⚄ Dice Roller</button>
+  <button class="tab" onclick="switchTab('combat',this)">⚔ Combat Tracker</button>
+  <button class="tab" onclick="switchTab('conditions',this)">☠ Conditions</button>
+  <button class="tab" onclick="switchTab('tools',this)">⚙ Tools</button>
+</div>
+
+<!-- ══ ROLLER TAB ══ -->
+<div id="tab-roller" class="tab-panel active">
+  <div class="section-label">Choose your dice</div>
+  <div class="palette" id="dicePalette"></div>
+  <div class="palette-ctrl">
+    <button class="pctrl-btn" onclick="clearPalette()">✕ Clear</button>
+    <button class="pctrl-btn" onclick="removeLast()">← Undo last</button>
+    <span style="font-family:'Cinzel',serif;font-size:9px;color:var(--ink3);align-self:center;letter-spacing:1px">RIGHT-CLICK die to set count</span>
+  </div>
+  <div class="input-row">
+    <div class="notation-wrap">
+      <input type="text" class="notation-input" id="notationInput" placeholder="2d6+3  ·  4d6kh3  ·  d20"
+             autocomplete="off" spellcheck="false"/>
+    </div>
+    <button class="roll-btn" id="rollBtn" onclick="doRoll()">⚄ Roll</button>
+  </div>
+  <input type="text" class="label-input" id="labelInput" placeholder="Label this roll (e.g. Sneak Attack, Fireball…)"/>
+  <div class="mod-row">
+    <span class="mod-lbl">MODIFIER</span>
+    <button class="mod-btn" onclick="addMod(-5)">−5</button>
+    <button class="mod-btn" onclick="addMod(-3)">−3</button>
+    <button class="mod-btn" onclick="addMod(-1)">−1</button>
+    <button class="mod-btn" onclick="addMod(1)">+1</button>
+    <button class="mod-btn" onclick="addMod(2)">+2</button>
+    <button class="mod-btn" onclick="addMod(3)">+3</button>
+    <button class="mod-btn" onclick="addMod(4)">+4</button>
+    <button class="mod-btn" onclick="addMod(5)">+5</button>
+    <button class="mod-btn" onclick="addMod(10)">+10</button>
+  </div>
+
+  <div class="section-label mt14">Quick Rolls</div>
+  <div class="presets">
+    <button class="preset-btn" onclick="setNotation('d20','Ability Check')">d20 — Check</button>
+    <button class="preset-btn" onclick="setNotation('2d20kh1','Advantage')">↑ Advantage</button>
+    <button class="preset-btn" onclick="setNotation('2d20kl1','Disadvantage')">↓ Disadvantage</button>
+    <button class="preset-btn" onclick="setNotation('4d6kh3','Stat Roll')">4d6kh3 — Stat</button>
+    <button class="preset-btn" onclick="setNotation('1d8+5','Longsword')">1d8+5 — Sword</button>
+    <button class="preset-btn" onclick="setNotation('2d6+3','Greatsword')">2d6+3 — Greatsword</button>
+    <button class="preset-btn" onclick="setNotation('8d6','Fireball')">8d6 — Fireball</button>
+    <button class="preset-btn" onclick="setNotation('6d6','Chain Lightning')">6d6 — Lightning</button>
+    <button class="preset-btn" onclick="setNotation('1d4+1d6+1d8+1d10+1d12+1d20','All Dice')">All Dice</button>
+    <button class="preset-btn" onclick="setNotation('1d100','Percentile')">d100 — %</button>
+    <button class="preset-btn" onclick="rollAllStats()">✦ Full Ability Array</button>
+  </div>
+
+  <div class="sep"></div>
+
+  <div id="stage">
+    <div class="stage-idle" id="stageIdle"><span>⚄</span>Select dice and roll…</div>
+    <div id="loadingIndicator" style="display:none" class="loading-text">Casting the bones…</div>
+    <div id="resultArea" style="display:none;width:100%">
+      <div class="canvas-wrap" id="canvasWrap"></div>
+      <div class="dice-strip" id="diceStrip"></div>
+      <div class="result-panel" id="resultPanel">
+        <div class="res-lbl" id="resLbl"></div>
+        <div class="res-notation" id="resNotation"></div>
+        <div class="res-total" id="resTotal"></div>
+        <div class="res-break" id="resBreak"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="historyWrap" style="display:none">
+    <div class="history-header">
+      <span class="section-label" style="margin:0">Roll History</span>
+      <button class="h-clear" onclick="clearHistory()">✕ Clear</button>
+    </div>
+    <div class="history-list" id="historyList"></div>
+  </div>
+</div>
+
+<!-- ══ COMBAT TRACKER TAB ══ -->
+<div id="tab-combat" class="tab-panel">
+  <div class="flex gap8" style="align-items:center;margin-bottom:12px;flex-wrap:wrap">
+    <span class="section-label" style="margin:0">Initiative Order</span>
+    <div class="round-display" id="roundDisplay">Round 1</div>
+  </div>
+  <div class="combatants" id="combatantList"></div>
+  <div class="combat-controls">
+    <button class="cc-btn cc-btn-gold" onclick="addCombatant('pc')">+ Player</button>
+    <button class="cc-btn cc-btn-red" onclick="addCombatant('enemy')">+ Enemy</button>
+    <button class="cc-btn cc-btn-gold" onclick="addCombatant('npc')">+ NPC</button>
+    <button class="cc-btn cc-btn-gold" onclick="sortByInit()">↕ Sort Initiative</button>
+    <button class="cc-btn cc-btn-green" onclick="nextTurn()">▶ Next Turn</button>
+    <button class="cc-btn cc-btn-gold" onclick="rollAllInit()">⚄ Roll Initiative</button>
+    <button class="cc-btn cc-btn-red" onclick="resetCombat()">↺ Reset</button>
+  </div>
+  <div class="tool-card" style="margin-top:16px">
+    <h3>Quick Damage / Heal</h3>
+    <div class="tool-row">
+      <span class="tool-label">Target</span>
+      <select class="tool-select" id="combTargetSel"><option value="">— select —</option></select>
+    </div>
+    <div class="tool-row">
+      <span class="tool-label">Amount</span>
+      <input type="number" class="tool-input" id="combAmount" placeholder="e.g. 14"/>
+      <button class="tool-btn" style="color:var(--red-b);border-color:var(--red)" onclick="applyDmg()">Damage</button>
+      <button class="tool-btn" style="color:#6fcf6f;border-color:#4a8a4a" onclick="applyHeal()">Heal</button>
+    </div>
+    <div class="tool-row">
+      <span class="tool-label">Roll Damage</span>
+      <input type="text" class="tool-input" id="combDmgNotation" placeholder="e.g. 2d6+4"/>
+      <button class="tool-btn" onclick="rollAndApplyDmg()">⚄ Roll & Apply</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ CONDITIONS TAB ══ -->
+<div id="tab-conditions" class="tab-panel">
+  <div class="active-conditions">
+    <div class="section-label" style="margin-bottom:6px">Active Conditions</div>
+    <div class="active-cond-list" id="activeCondList">
+      <span style="font-style:italic;color:var(--ink3);font-size:12px">No conditions active — click below to add</span>
+    </div>
+  </div>
+  <div class="section-label mt14">DnD 5e Conditions</div>
+  <div class="conditions-grid" id="conditionsGrid"></div>
+</div>
+
+<!-- ══ TOOLS TAB ══ -->
+<div id="tab-tools" class="tab-panel">
+  <div class="tools-grid">
+
+    <div class="tool-card">
+      <h3>Spell Save DC</h3>
+      <div class="tool-row"><span class="tool-label">Prof Bonus</span>
+        <input type="number" class="tool-input" id="spellProf" value="3" min="2" max="6"/></div>
+      <div class="tool-row"><span class="tool-label">Spell Mod</span>
+        <input type="number" class="tool-input" id="spellMod" value="5" min="-5" max="10"/></div>
+      <div class="tool-result" id="spellDcResult"></div>
+    </div>
+
+    <div class="tool-card">
+      <h3>Ability Modifier</h3>
+      <div class="tool-row"><span class="tool-label">Score</span>
+        <input type="number" class="tool-input" id="abilScore" value="16" min="1" max="30" oninput="calcAbilMod()"/></div>
+      <div class="tool-result" id="abilModResult"></div>
+    </div>
+
+    <div class="tool-card">
+      <h3>Attack Roll</h3>
+      <div class="tool-row"><span class="tool-label">Attack Bonus</span>
+        <input type="number" class="tool-input" id="atkBonus" value="6"/></div>
+      <div class="tool-row"><span class="tool-label">Target AC</span>
+        <input type="number" class="tool-input" id="atkAC" value="15"/></div>
+      <div class="tool-row"><span class="tool-label">Mode</span>
+        <select class="tool-select" id="atkMode">
+          <option value="normal">Normal</option>
+          <option value="adv">Advantage</option>
+          <option value="dis">Disadvantage</option>
+        </select>
+      </div>
+      <div style="margin-top:8px"><button class="tool-btn" onclick="doAttackRoll()">⚄ Roll Attack</button></div>
+      <div class="tool-result" id="atkResult"></div>
+    </div>
+
+    <div class="tool-card">
+      <h3>Death Saves</h3>
+      <div style="display:flex;gap:20px;align-items:flex-start;margin-bottom:10px">
+        <div>
+          <div style="font-family:'Cinzel',serif;font-size:10px;color:#6fcf6f;letter-spacing:1px;margin-bottom:6px">SUCCESSES</div>
+          <div class="flex gap8" id="deathSucc"></div>
+        </div>
+        <div>
+          <div style="font-family:'Cinzel',serif;font-size:10px;color:var(--red-l);letter-spacing:1px;margin-bottom:6px">FAILURES</div>
+          <div class="flex gap8" id="deathFail"></div>
+        </div>
+      </div>
+      <div class="flex gap8" style="flex-wrap:wrap">
+        <button class="tool-btn" onclick="deathSave()">⚄ Roll Save</button>
+        <button class="tool-btn" onclick="resetDeath()" style="color:var(--ink3);border-color:var(--border)">Reset</button>
+      </div>
+      <div class="tool-result" id="deathResult" style="margin-top:8px"></div>
+    </div>
+
+    <div class="tool-card">
+      <h3>Concentration Check</h3>
+      <div class="tool-row"><span class="tool-label">Damage taken</span>
+        <input type="number" class="tool-input" id="concDmg" value="10" min="1"/></div>
+      <div class="tool-row"><span class="tool-label">Con Modifier</span>
+        <input type="number" class="tool-input" id="concMod" value="2"/></div>
+      <div class="tool-row"><span class="tool-label">Prof (War Caster)</span>
+        <input type="number" class="tool-input" id="concProf" value="0" min="0" max="6"/></div>
+      <div style="margin-top:8px"><button class="tool-btn" onclick="doConcentration()">⚄ Roll Con Check</button></div>
+      <div class="tool-result" id="concResult"></div>
+    </div>
+
+    <div class="tool-card">
+      <h3>Exhaustion Level</h3>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px" id="exhaustionBtns"></div>
+      <div class="tool-result" id="exhaustionResult"></div>
+    </div>
+
+  </div>
+</div>
+
+</div><!-- /app -->
+
+<div class="toast" id="toast"></div>
+<div class="ctx-menu" id="ctxMenu" style="display:none"></div>
+
+<script>
+// ══════════════════════════════════════════════
+// DICE DEFINITIONS
+// ══════════════════════════════════════════════
+const DICE=[
+  {sides:4,  color:'#9b6fc8',dark:'#5c2e8a',name:'d4'},
+  {sides:6,  color:'#4a9fd4',dark:'#1d5a8a',name:'d6'},
+  {sides:8,  color:'#3ab890',dark:'#0f6040',name:'d8'},
+  {sides:10, color:'#c9a030',dark:'#7a5a0a',name:'d10'},
+  {sides:12, color:'#c85050',dark:'#6a1818',name:'d12'},
+  {sides:20, color:'#5090c8',dark:'#1a4a7a',name:'d20'},
+  {sides:100,color:'#8050c8',dark:'#3a1870',name:'d100'},
+];
+const selectedDice={};
+let rollHistory=[];
+
+// ══════════════════════════════════════════════
+// TABS
+// ══════════════════════════════════════════════
+function switchTab(id,btn){
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
+  document.getElementById('tab-'+id).classList.add('active');
+  btn.classList.add('active');
+}
+
+// ══════════════════════════════════════════════
+// PALETTE
+// ══════════════════════════════════════════════
+function buildPalette(){
+  const pal=document.getElementById('dicePalette');
+  DICE.forEach(d=>{
+    selectedDice[d.sides]=0;
+    const btn=document.createElement('button');
+    btn.className='die-btn';btn.dataset.sides=d.sides;
+    btn.innerHTML=`<div class="badge" id="badge-${d.sides}">0</div>
+      <div class="die-inner">
+        ${dieSVG(d.sides,d.color,d.dark)}
+        <span class="die-lbl">${d.name}</span>
+      </div>`;
+    btn.addEventListener('click',()=>selectDie(d.sides));
+    btn.addEventListener('contextmenu',e=>{e.preventDefault();showDieCtx(d.sides,e)});
+    pal.appendChild(btn);
+  });
+}
+
+function dieSVG(sides,col,dark){
+  const svgs={
+    4:`<svg class="die-svg" viewBox="0 0 72 72"><defs><radialGradient id="rg4" cx="40%" cy="30%"><stop offset="0%" stop-color="${col}"/><stop offset="100%" stop-color="${dark}"/></radialGradient></defs><polygon points="36,6 66,62 6,62" fill="url(#rg4)" stroke="${col}" stroke-width="1.5" stroke-linejoin="round"/><polygon points="36,6 66,62 6,62" fill="none" stroke="rgba(255,255,255,.18)" stroke-width=".6"/><line x1="36" y1="6" x2="36" y2="62" stroke="rgba(255,255,255,.06)" stroke-width=".5"/></svg>`,
+    6:`<svg class="die-svg" viewBox="0 0 72 72"><defs><radialGradient id="rg6" cx="38%" cy="32%"><stop offset="0%" stop-color="${col}"/><stop offset="100%" stop-color="${dark}"/></radialGradient></defs><rect x="8" y="8" width="56" height="56" rx="10" fill="url(#rg6)" stroke="${col}" stroke-width="1.5"/><rect x="8" y="8" width="56" height="56" rx="10" fill="none" stroke="rgba(255,255,255,.16)" stroke-width=".6"/></svg>`,
+    8:`<svg class="die-svg" viewBox="0 0 72 72"><defs><radialGradient id="rg8" cx="38%" cy="32%"><stop offset="0%" stop-color="${col}"/><stop offset="100%" stop-color="${dark}"/></radialGradient></defs><polygon points="36,5 67,36 36,67 5,36" fill="url(#rg8)" stroke="${col}" stroke-width="1.5" stroke-linejoin="round"/><line x1="5" y1="36" x2="67" y2="36" stroke="rgba(255,255,255,.08)" stroke-width=".5"/><line x1="36" y1="5" x2="36" y2="67" stroke="rgba(255,255,255,.08)" stroke-width=".5"/></svg>`,
+    10:`<svg class="die-svg" viewBox="0 0 72 72"><defs><radialGradient id="rg10" cx="38%" cy="32%"><stop offset="0%" stop-color="${col}"/><stop offset="100%" stop-color="${dark}"/></radialGradient></defs><polygon points="36,5 62,22 62,50 36,67 10,50 10,22" fill="url(#rg10)" stroke="${col}" stroke-width="1.5" stroke-linejoin="round"/><line x1="36" y1="5" x2="36" y2="67" stroke="rgba(255,255,255,.07)" stroke-width=".5"/></svg>`,
+    12:`<svg class="die-svg" viewBox="0 0 72 72"><defs><radialGradient id="rg12" cx="38%" cy="32%"><stop offset="0%" stop-color="${col}"/><stop offset="100%" stop-color="${dark}"/></radialGradient></defs><polygon points="36,4 56,14 68,34 60,56 46,66 26,66 12,56 4,34 16,14" fill="url(#rg12)" stroke="${col}" stroke-width="1.5" stroke-linejoin="round"/></svg>`,
+    20:`<svg class="die-svg" viewBox="0 0 72 72"><defs><radialGradient id="rg20" cx="38%" cy="28%"><stop offset="0%" stop-color="${col}"/><stop offset="100%" stop-color="${dark}"/></radialGradient></defs><polygon points="36,3 66,18 66,54 36,69 6,54 6,18" fill="url(#rg20)" stroke="${col}" stroke-width="1.5" stroke-linejoin="round"/><line x1="36" y1="3" x2="36" y2="69" stroke="rgba(255,255,255,.07)" stroke-width=".5"/><line x1="6" y1="18" x2="66" y2="54" stroke="rgba(255,255,255,.07)" stroke-width=".5"/><line x1="6" y1="54" x2="66" y2="18" stroke="rgba(255,255,255,.07)" stroke-width=".5"/></svg>`,
+    100:`<svg class="die-svg" viewBox="0 0 72 72"><defs><radialGradient id="rg100" cx="38%" cy="32%"><stop offset="0%" stop-color="${col}"/><stop offset="100%" stop-color="${dark}"/></radialGradient></defs><circle cx="36" cy="36" r="30" fill="url(#rg100)" stroke="${col}" stroke-width="1.5"/><circle cx="36" cy="36" r="23" fill="none" stroke="rgba(255,255,255,.1)" stroke-width=".5"/></svg>`,
+  };
+  return svgs[sides]||'';
+}
+
+function selectDie(sides){
+  selectedDice[sides]=(selectedDice[sides]||0)+1;
+  refreshPaletteUI();refreshNotation();
+}
+function refreshPaletteUI(){
+  DICE.forEach(d=>{
+    const btn=document.querySelector(`.die-btn[data-sides="${d.sides}"]`);
+    const badge=document.getElementById(`badge-${d.sides}`);
+    const c=selectedDice[d.sides]||0;
+    btn.classList.toggle('active',c>0);badge.textContent=c;
+  });
+}
+function refreshNotation(){
+  const parts=[];
+  DICE.forEach(d=>{const c=selectedDice[d.sides]||0;if(c>0)parts.push(`${c}d${d.sides}`)});
+  if(parts.length) document.getElementById('notationInput').value=parts.join('+');
+}
+function clearPalette(){DICE.forEach(d=>selectedDice[d.sides]=0);refreshPaletteUI()}
+function removeLast(){
+  for(let i=DICE.length-1;i>=0;i--){
+    if(selectedDice[DICE[i].sides]>0){selectedDice[DICE[i].sides]--;break}
+  }
+  refreshPaletteUI();refreshNotation();
+}
+
+// right-click context menu on die
+function showDieCtx(sides,e){
+  const menu=document.getElementById('ctxMenu');
+  menu.innerHTML='';
+  [0,1,2,3,4,5,6,8,10].forEach(n=>{
+    const item=document.createElement('div');
+    item.className='ctx-item';
+    item.textContent=n===0?'Remove d'+sides:'× '+n+' d'+sides;
+    item.onclick=()=>{selectedDice[sides]=n;refreshPaletteUI();refreshNotation();hideCtx()};
+    menu.appendChild(item);
+  });
+  menu.style.display='block';menu.style.left=e.clientX+'px';menu.style.top=e.clientY+'px';
+  setTimeout(()=>document.addEventListener('click',hideCtx,{once:true}),0);
+}
+function hideCtx(){document.getElementById('ctxMenu').style.display='none'}
+
+function addMod(n){
+  let v=document.getElementById('notationInput').value.trim().replace(/\s/g,'');
+  v=v.replace(/[+-]\d+$/,'');
+  if(!v)return;
+  document.getElementById('notationInput').value=n>0?v+'+'+n:n<0?v+n:v;
+}
+function setNotation(notation,label){
+  document.getElementById('notationInput').value=notation;
+  if(label)document.getElementById('labelInput').value=label;
+  clearPalette();
+}
+
+// ══════════════════════════════════════════════
+// TOP-DOWN PERSPECTIVE DICE ANIMATION
+// ══════════════════════════════════════════════
+//
+// Perspective model:
+//   Each die has a Z coordinate (height above table).
+//   Z=1 → die is "close to camera" (appears large).
+//   Z=0 → die has hit the table (appears at base size).
+//   While Z>0: scale = BASE_R + Z * FALL_SCALE  (big → small as it drops)
+//   On bounce: Z reverses with restitution, die slides on table in X/Y.
+//   Spin is a 2-D rotation in the top-down plane, decaying on each bounce.
+//   Shadow grows larger/fainter as Z increases (object higher up).
+//   When settled: wobble animation, value fades in.
+// ══════════════════════════════════════════════
+
+// ── Die shape paths (top-down view, radius r) ──
+function diePath(sides, cx, cy, r, rot, ctx2d) {
+  ctx2d.beginPath();
+  if (sides === 6) {
+    // Rounded square – top-down d6
+    const s = r * 0.82;
+    ctx2d.roundRect(cx - s, cy - s, s * 2, s * 2, r * 0.24);
+  } else if (sides === 100) {
+    ctx2d.arc(cx, cy, r * 0.92, 0, Math.PI * 2);
+  } else {
+    // Regular polygon with correct vertex count for each die
+    const verts = { 4:3, 8:4, 10:5, 12:6, 20:6 };
+    const n = verts[sides] || 6;
+    const offset = rot; // rotation already applied via ctx transform
+    for (let i = 0; i < n; i++) {
+      const a = (Math.PI * 2 * i / n) + offset;
+      const px = cx + r * Math.cos(a);
+      const py = cy + r * Math.sin(a);
+      i === 0 ? ctx2d.moveTo(px, py) : ctx2d.lineTo(px, py);
+    }
+    ctx2d.closePath();
+  }
+}
+
+// ── Dot pips for d6 ──
+function drawPips(ctx2d, val, r, col) {
+  const pos6 = [
+    [],
+    [[0,0]],
+    [[-1,-1],[1,1]],
+    [[-1,-1],[0,0],[1,1]],
+    [[-1,-1],[1,-1],[-1,1],[1,1]],
+    [[-1,-1],[1,-1],[0,0],[-1,1],[1,1]],
+    [[-1,-1],[0,-1],[1,-1],[-1,1],[0,1],[1,1]],
+  ];
+  const dots = pos6[Math.min(val, 6)] || [];
+  const sp = r * 0.28;
+  const dr = r * 0.09;
+  ctx2d.fillStyle = col;
+  dots.forEach(([dx, dy]) => {
+    ctx2d.beginPath();
+    ctx2d.arc(dx * sp, dy * sp, dr, 0, Math.PI * 2);
+    ctx2d.fill();
+  });
+}
+
+// ── Ease out cubic ──
+function easeOut(t) { return 1 - Math.pow(1 - t, 3); }
+
+class TopDownDie {
+  constructor(x, y, sides, value, kept, colObj, delay, W, H) {
+    // Final resting position
+    this.tx = x; this.ty = y;
+    // Spawn at a fully random point across the whole canvas
+    this.x = 40 + Math.random() * ((W || 600) - 80);
+    this.y = 40 + Math.random() * ((H || 200) - 80);
+    this.sides = sides; this.value = value;
+    this.kept = kept; this.col = colObj;
+    this.delay = delay;
+
+    // Z physics — start low, subtle fall
+    this.z    = 0.35 + Math.random() * 0.25;
+    this.vz   = -(1.1 + Math.random() * 0.6);
+    this.gravity = 0.09;
+
+    // XY slide velocity — gentle drift
+    this.vx = (Math.random() - 0.5) * 2.2;
+    this.vy = (Math.random() - 0.5) * 2.2;
+
+    // Spin
+    this.rot   = Math.random() * Math.PI * 2;
+    this.vrot  = (Math.random() - 0.5) * 0.28;
+
+    // Base visual radius — smaller
+    this.baseR = 20 + (sides === 100 ? 4 : 0);
+
+    // State
+    this.bounces    = 0;
+    this.restitution = 0.42 + Math.random() * 0.1;
+    this.friction    = 0.78;
+    this.spinDecay   = 0.72;
+    this.landed      = false;
+    this.age         = 0;
+    this.active      = false; // becomes true after delay
+
+    // Post-landing wobble
+    this.wobbleAmp = 0;
+    this.wobbleFreq = 0.18 + Math.random() * 0.06;
+
+    // Impact rings
+    this.rings = []; // {r, maxR, alpha}
+
+    // Value reveal
+    this.valueAlpha = 0;
+
+    // Opacity fade-in
+    this.opacity = 0;
+  }
+
+  get visualR() {
+    // Subtle size change: only ~45% larger at peak height
+    const fallScale = 0.45;
+    return this.baseR * (1 + this.z * fallScale);
+  }
+
+  update(W, H) {
+    if (this.delay > 0) { this.delay--; return; }
+    this.active = true;
+    this.age++;
+    this.opacity = Math.min(1, this.opacity + 0.07);
+
+    if (!this.landed) {
+      // Gravity
+      this.vz += this.gravity;
+      this.z  -= this.vz;
+
+      // XY movement (slide while airborne, gentler on table)
+      this.x += this.vx * (0.3 + this.z * 0.7);
+      this.y += this.vy * (0.3 + this.z * 0.7);
+      this.rot += this.vrot;
+
+      // Hit the table (z <= 0)
+      if (this.z <= 0) {
+        this.z = 0;
+        this.bounces++;
+
+        // Emit impact ring
+        this.rings.push({ r: this.baseR * 0.5, maxR: this.baseR * (1.8 + this.bounces * 0.3), alpha: 0.7, col: this.col.color });
+
+        if (Math.abs(this.vz) < 0.18) {
+          // Settle
+          this.landed = true;
+          this.vz = 0; this.vx = 0; this.vy = 0; this.vrot = 0;
+          this.wobbleAmp = 0.06 + Math.random() * 0.04;
+        } else {
+          // Bounce
+          this.vz = -Math.abs(this.vz) * this.restitution;
+          this.vx *= this.friction;
+          this.vy *= this.friction;
+          this.vrot *= this.spinDecay;
+          // Snap spin toward a "face-up" alignment on later bounces
+          if (this.bounces >= 2) {
+            const snap = this.snapAngle();
+            this.vrot += (snap - this.rot) * 0.12;
+          }
+        }
+      }
+
+      // Wall bounce
+      const vr = this.visualR;
+      if (this.x - vr < 0)  { this.x = vr;    this.vx =  Math.abs(this.vx) * 0.55; }
+      if (this.x + vr > W)  { this.x = W - vr; this.vx = -Math.abs(this.vx) * 0.55; }
+      if (this.y - vr < 0)  { this.y = vr;     this.vy =  Math.abs(this.vy) * 0.55; }
+      if (this.y + vr > H)  { this.y = H - vr; this.vy = -Math.abs(this.vy) * 0.55; }
+
+    } else {
+      // Wobble decay
+      this.wobbleAmp *= 0.91;
+      this.rot += Math.sin(this.age * this.wobbleFreq) * this.wobbleAmp;
+      // Slide to final resting X/Y
+      this.x += (this.tx - this.x) * 0.04;
+      this.y += (this.ty - this.y) * 0.04;
+      // Value fade in
+      this.valueAlpha = Math.min(1, this.valueAlpha + 0.06);
+    }
+
+    // Animate rings
+    this.rings = this.rings.filter(ring => ring.alpha > 0.02);
+    this.rings.forEach(ring => {
+      ring.r += (ring.maxR - ring.r) * 0.18;
+      ring.alpha *= 0.82;
+    });
+  }
+
+  // Return angle closest to a "stable face-up" orientation
+  snapAngle() {
+    const verts = { 4:3, 6:4, 8:4, 10:5, 12:6, 20:6, 100:0 };
+    const n = verts[this.sides] || 6;
+    if (!n) return this.rot;
+    const step = (Math.PI * 2) / n;
+    return Math.round(this.rot / step) * step;
+  }
+
+  draw(ctx2d) {
+    if (!this.active || this.opacity <= 0) return;
+
+    const r  = this.visualR;
+    const c  = this.col;
+    const zo = this.opacity * (this.kept ? 1 : 0.45);
+
+    // ── Impact rings ──
+    this.rings.forEach(ring => {
+      ctx2d.save();
+      ctx2d.globalAlpha = ring.alpha * this.opacity * 0.5;
+      ctx2d.beginPath(); ctx2d.arc(this.x, this.y, ring.r, 0, Math.PI * 2);
+      ctx2d.strokeStyle = ring.col;
+      ctx2d.lineWidth   = 2.5;
+      ctx2d.stroke();
+      ctx2d.restore();
+    });
+
+    // ── Shadow: large + diffuse when high, small + sharp when landed ──
+    {
+      const shadowR     = r * (0.85 + this.z * 0.5);
+      const shadowAlpha = (0.45 - this.z * 0.3) * zo;
+      const shadowOX    = this.z * 18;   // offset as die is "above"
+      const shadowOY    = this.z * 12;
+      if (shadowAlpha > 0) {
+        const sg = ctx2d.createRadialGradient(
+          this.x + shadowOX, this.y + shadowOY, 0,
+          this.x + shadowOX, this.y + shadowOY, shadowR
+        );
+        sg.addColorStop(0,   'rgba(0,0,0,' + (shadowAlpha).toFixed(2) + ')');
+        sg.addColorStop(0.6, 'rgba(0,0,0,' + (shadowAlpha * 0.4).toFixed(2) + ')');
+        sg.addColorStop(1,   'rgba(0,0,0,0)');
+        ctx2d.save();
+        ctx2d.globalAlpha = 1;
+        ctx2d.beginPath(); ctx2d.ellipse(this.x + shadowOX, this.y + shadowOY, shadowR, shadowR * 0.6, 0, 0, Math.PI * 2);
+        ctx2d.fillStyle = sg;
+        ctx2d.fill();
+        ctx2d.restore();
+      }
+    }
+
+    // ── Die body ──
+    ctx2d.save();
+    ctx2d.globalAlpha = zo;
+    ctx2d.translate(this.x, this.y);
+    ctx2d.rotate(this.rot);
+
+    // Face gradient: lit from "above-left" (top-down perspective)
+    const grd = ctx2d.createRadialGradient(-r * 0.28, -r * 0.28, r * 0.05, r * 0.1, r * 0.1, r * 1.15);
+    grd.addColorStop(0,    lighten(c.color, 0.42));
+    grd.addColorStop(0.45, c.color);
+    grd.addColorStop(1,    c.dark);
+
+    diePath(this.sides, 0, 0, r, 0, ctx2d);
+    ctx2d.fillStyle = grd;
+    ctx2d.fill();
+
+    // Edge highlight
+    ctx2d.strokeStyle = this.kept ? lighten(c.color, 0.55) : 'rgba(255,255,255,0.13)';
+    ctx2d.lineWidth   = this.landed ? 2 : 1.2;
+    ctx2d.stroke();
+
+    // Inner bevel highlight (top-left quadrant glow)
+    ctx2d.save();
+    ctx2d.globalCompositeOperation = 'screen';
+    ctx2d.globalAlpha = 0.14;
+    ctx2d.beginPath(); ctx2d.arc(-r * 0.25, -r * 0.28, r * 0.5, 0, Math.PI * 2);
+    ctx2d.fillStyle = '#ffffff';
+    ctx2d.fill();
+    ctx2d.restore();
+
+    // Dropped-die cross
+    if (!this.kept && this.landed) {
+      ctx2d.strokeStyle = 'rgba(240,60,60,0.6)';
+      ctx2d.lineWidth   = 2.5;
+      const x2 = r * 0.4;
+      ctx2d.beginPath(); ctx2d.moveTo(-x2,-x2); ctx2d.lineTo(x2,x2);
+      ctx2d.moveTo(x2,-x2); ctx2d.lineTo(-x2,x2);
+      ctx2d.stroke();
+    }
+
+    // ── Value / pips (visible once landed) ──
+    if (this.valueAlpha > 0.01) {
+      ctx2d.globalAlpha = this.valueAlpha * (this.kept ? 1 : 0.3);
+      if (this.sides === 6 && this.value <= 6) {
+        // Pips for d6
+        const pipCol = this.value === 6 ? lighten(c.color, 0.8) : 'rgba(255,255,255,0.88)';
+        drawPips(ctx2d, this.value, r, pipCol);
+      } else {
+        // Numeral for all other dice
+        const fs = this.value >= 10 ? r * 0.52 : r * 0.64;
+        ctx2d.font             = `700 ${fs}px 'Cinzel Decorative', serif`;
+        ctx2d.textAlign        = 'center';
+        ctx2d.textBaseline     = 'middle';
+        ctx2d.fillStyle        = 'rgba(0,0,0,0.55)';
+        ctx2d.fillText(this.value, 1.5, 2);
+        ctx2d.fillStyle = this.value === this.sides ? lighten(c.color, 0.85) : 'rgba(255,255,255,0.92)';
+        ctx2d.fillText(this.value, 0, 0);
+      }
+    }
+
+    ctx2d.restore();
+
+    // ── "Height" indicator ring (faint halo while airborne) ──
+    if (this.z > 0.08 && !this.landed) {
+      ctx2d.save();
+      ctx2d.globalAlpha = Math.min(0.35, this.z * 0.28) * this.opacity;
+      ctx2d.beginPath(); ctx2d.arc(this.x, this.y, r + 4, 0, Math.PI * 2);
+      ctx2d.strokeStyle = c.color;
+      ctx2d.lineWidth   = 1;
+      ctx2d.setLineDash([3, 4]);
+      ctx2d.stroke();
+      ctx2d.setLineDash([]);
+      ctx2d.restore();
+    }
+  }
+}
+
+function lighten(hex, amt) {
+  const n = parseInt(hex.replace('#',''), 16);
+  const r = Math.min(255, ((n >> 16) & 255) + Math.round(amt * 190));
+  const g = Math.min(255, ((n >>  8) & 255) + Math.round(amt * 190));
+  const b = Math.min(255, ( n        & 255) + Math.round(amt * 190));
+  return '#' + [r,g,b].map(v => v.toString(16).padStart(2,'0')).join('');
+}
+
+// ── Spread dice evenly in a grid so they don't pile up ──
+function computeRestPositions(count, W, H) {
+  const margin = 38;
+  const cols   = Math.ceil(Math.sqrt(count * (W / H)));
+  const rows   = Math.ceil(count / cols);
+  const cw     = (W - margin * 2) / cols;
+  const ch     = (H - margin * 2) / rows;
+  const positions = [];
+  for (let i = 0; i < count; i++) {
+    const col = i % cols;
+    const row = Math.floor(i / cols);
+    positions.push({
+      x: margin + cw * col + cw / 2 + (Math.random() - 0.5) * cw * 0.3,
+      y: margin + ch * row + ch / 2 + (Math.random() - 0.5) * ch * 0.3,
+    });
+  }
+  // Shuffle so dice don't always land in index order
+  for (let i = positions.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [positions[i], positions[j]] = [positions[j], positions[i]];
+  }
+  return positions;
+}
+
+let physDice = [], animFrame = null, canvas = null, ctx2d = null;
+
+// ── Table background: dark felt with subtle grain ──
+function drawTable(ctx2d, W, H) {
+  ctx2d.fillStyle = '#0e0906';
+  ctx2d.fillRect(0, 0, W, H);
+  // Felt texture: faint cross-hatch
+  ctx2d.strokeStyle = 'rgba(60,44,24,0.22)';
+  ctx2d.lineWidth = 0.5;
+  for (let x = 0; x < W; x += 22) {
+    ctx2d.beginPath(); ctx2d.moveTo(x, 0); ctx2d.lineTo(x, H); ctx2d.stroke();
+  }
+  for (let y = 0; y < H; y += 22) {
+    ctx2d.beginPath(); ctx2d.moveTo(0, y); ctx2d.lineTo(W, y); ctx2d.stroke();
+  }
+  // Vignette
+  const vg = ctx2d.createRadialGradient(W/2, H/2, H*0.2, W/2, H/2, H*0.85);
+  vg.addColorStop(0, 'rgba(0,0,0,0)');
+  vg.addColorStop(1, 'rgba(0,0,0,0.55)');
+  ctx2d.fillStyle = vg;
+  ctx2d.fillRect(0, 0, W, H);
+}
+
+function setupCanvas(diceList) {
+  const wrap = document.getElementById('canvasWrap');
+  wrap.innerHTML = '';
+  const W = Math.min(920, (wrap.parentElement.clientWidth || 680) - 8);
+  // Height scales gently with die count
+  const H = Math.max(180, Math.min(260, 100 + diceList.length * 12));
+  canvas = document.createElement('canvas');
+  canvas.width  = W; canvas.height = H;
+  canvas.style.cssText = 'width:100%;height:auto;border-radius:6px;display:block';
+  wrap.appendChild(canvas);
+  ctx2d = canvas.getContext('2d');
+
+  const positions = computeRestPositions(diceList.length, W, H);
+  physDice = diceList.map((d, i) => {
+    const c = DICE.find(x => x.sides === d.die) || DICE[5];
+    const pos = positions[i];
+    return new TopDownDie(pos.x, pos.y, d.die, d.value, d.kept, c, i * 4, W, H);
+  });
+
+  if (animFrame) cancelAnimationFrame(animFrame);
+  animate(W, H);
+}
+
+function animate(W, H) {
+  drawTable(ctx2d, W, H);
+  physDice.forEach(d => { d.update(W, H); d.draw(ctx2d); });
+  const allDone = physDice.every(d => d.landed && d.wobbleAmp < 0.001 && d.valueAlpha > 0.98);
+  if (!allDone) animFrame = requestAnimationFrame(() => animate(W, H));
+  else animFrame = null;
+}
+
+
+// ══════════════════════════════════════════════
+// MAIN ROLL
+// ══════════════════════════════════════════════
+async function doRoll(){
+  const notation=document.getElementById('notationInput').value.trim();
+  const label=document.getElementById('labelInput').value.trim();
+  if(!notation){showToast('Select dice or enter a notation');return}
+  const btn=document.getElementById('rollBtn');btn.disabled=true;
+  document.getElementById('stageIdle').style.display='none';
+  document.getElementById('resultArea').style.display='none';
+  document.getElementById('loadingIndicator').style.display='block';
+  try{
+    const res=await fetch('/roll',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({notation,label:label||null})});
+    const data=await res.json();
+    if(!res.ok){showToast(data.detail||'Roll failed');show('stageIdle');hide('loadingIndicator');return}
+    hide('loadingIndicator');
+    displayResult(data);addToHistory(data);
+  }catch(e){showToast('Connection error — is the API running?');show('stageIdle');hide('loadingIndicator')}
+  finally{btn.disabled=false}
+}
+
+function displayResult(data){
+  show('resultArea');
+  // canvas animation
+  setupCanvas(data.dice_results);
+  // dice strip (value badges)
+  const strip=document.getElementById('diceStrip');strip.innerHTML='';
+  const dieColor=sides=>(DICE.find(x=>x.sides===sides)||DICE[5]).color;
+  data.dice_results.forEach((d,i)=>{
+    const isMax=d.value===d.die,isMin=d.value===1&&d.kept;
+    const col=dieColor(d.die);
+    const w=document.createElement('div');w.className='die-result';
+    w.style.animationDelay=(i*.06)+'s';
+    const boxBg   = d.kept ? 'linear-gradient(135deg,'+col+'55,'+col+'22)' : 'rgba(40,10,10,.5)';
+    const boxBord  = d.kept ? (isMax ? col : 'rgba(255,255,255,.18)') : 'rgba(192,57,43,.35)';
+    const boxGlow  = isMax  ? 'box-shadow:0 0 12px '+col+'88;' : '';
+    const boxOpac  = d.kept ? '1' : '.5';
+    const numColor = isMax  ? col : (isMin ? '#e05050' : '#fff');
+    const spnColor = d.kept ? 'rgba(255,255,255,.45)' : 'rgba(192,57,43,.55)';
+    const spnDeco  = d.kept ? '' : 'text-decoration:line-through;';
+    const spnSufx  = d.kept ? '' : ' ✕';
+    w.innerHTML =
+      '<div style="width:44px;height:44px;border-radius:6px;display:flex;align-items:center;justify-content:center;' +
+        'background:' + boxBg + ';border:1.5px solid ' + boxBord + ';' + boxGlow + 'opacity:' + boxOpac + '">' +
+        '<span style="font-family:\'Cinzel Decorative\',serif;font-size:16px;font-weight:700;color:' + numColor + ';text-shadow:0 1px 4px rgba(0,0,0,.8)">' + d.value + '</span>' +
+      '</div>' +
+      '<span style="font-family:\'Cinzel\',serif;font-size:9px;color:' + spnColor + ';' + spnDeco + '">d' + d.die + spnSufx + '</span>';
+    strip.appendChild(w);
+  });
+  // result panel
+  const anyMax=data.dice_results.some(d=>d.value===d.die&&d.kept&&data.dice_results.filter(x=>x.kept).length===1);
+  const anyMin=data.dice_results.some(d=>d.value===1&&d.kept&&data.dice_results.filter(x=>x.kept).length===1);
+  document.getElementById('resLbl').textContent=data.label||'';
+  document.getElementById('resNotation').textContent=data.notation.toUpperCase();
+  const tot=document.getElementById('resTotal');
+  tot.textContent=data.total;tot.className='res-total';
+  if(anyMax)tot.classList.add('nat-max');
+  if(anyMin)tot.classList.add('nat-min');
+  document.getElementById('resBreak').textContent=data.breakdown;
+  if(anyMax)spawnParticles(dieColor(data.dice_results[0].die));
+  if(anyMin)spawnParticles('#c0392b');
+}
+
+// ══════════════════════════════════════════════
+// PARTICLES
+// ══════════════════════════════════════════════
+function spawnParticles(color){
+  const stage=document.getElementById('stage');
+  for(let i=0;i<16;i++){setTimeout(()=>{
+    const p=document.createElement('div');p.className='particle';
+    p.style.cssText=`background:${color};box-shadow:0 0 5px ${color};left:${Math.random()*80+40}%;top:60%;--tx:${(Math.random()-.5)*100}px;animation-duration:${.6+Math.random()*.5}s;animation-delay:${Math.random()*.15}s`;
+    stage.appendChild(p);setTimeout(()=>p.remove(),1200);
+  },i*35)}
+}
+
+// ══════════════════════════════════════════════
+// ROLL ALL STATS
+// ══════════════════════════════════════════════
+async function rollAllStats(){
+  const stats=['Strength','Dexterity','Constitution','Intelligence','Wisdom','Charisma'];
+  show('loadingIndicator');hide('stageIdle');hide('resultArea');
+  document.getElementById('rollBtn').disabled=true;
+  try{
+    const res=await fetch('/roll/multi',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(stats.map(s=>({notation:'4d6kh3',label:s})))});
+    const data=await res.json();
+    if(!res.ok){showToast(data.detail||'Failed');show('stageIdle');hide('loadingIndicator');return}
+    hide('loadingIndicator');show('resultArea');
+    // All dice on one canvas
+    const all=data.rolls.flatMap(r=>r.dice_results);
+    setupCanvas(all);
+    // Strip shows stat summaries
+    const strip=document.getElementById('diceStrip');strip.innerHTML='';
+    data.rolls.forEach((roll,i)=>{
+      const w=document.createElement('div');w.className='die-result';w.style.animationDelay=(i*.08)+'s';
+      w.innerHTML=`<div style="width:54px;height:54px;border-radius:5px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;background:rgba(201,168,76,.1);border:1px solid rgba(201,168,76,.25)">
+        <span style="font-family:'Cinzel Decorative',serif;font-size:20px;font-weight:700;color:var(--gold-l);line-height:1">${roll.total}</span>
+        <span style="font-family:'Cinzel',serif;font-size:8px;letter-spacing:.5px;color:var(--ink3)">${roll.label.slice(0,3).toUpperCase()}</span>
+      </div>`;
+      strip.appendChild(w);addToHistory(roll);
+    });
+    const tot=document.getElementById('resTotal');tot.textContent=data.rolls.reduce((s,r)=>s+r.total,0);
+    tot.className='res-total';
+    document.getElementById('resLbl').textContent='Full Ability Score Array';
+    document.getElementById('resNotation').textContent='6 × 4D6KH3';
+    document.getElementById('resBreak').textContent=data.rolls.map(r=>`${r.label.slice(0,3)}: ${r.total}`).join(' · ');
+  }catch(e){showToast('Connection error');show('stageIdle')}
+  finally{document.getElementById('rollBtn').disabled=false;hide('loadingIndicator')}
+}
+
+// ══════════════════════════════════════════════
+// HISTORY
+// ══════════════════════════════════════════════
+function addToHistory(data){
+  rollHistory.unshift(data);if(rollHistory.length>40)rollHistory.pop();renderHistory();
+}
+function renderHistory(){
+  const wrap=document.getElementById('historyWrap'),list=document.getElementById('historyList');
+  if(!rollHistory.length){wrap.style.display='none';return}
+  wrap.style.display='block';list.innerHTML='';
+  rollHistory.slice(0,20).forEach(r=>{
+    const item=document.createElement('div');item.className='history-item';
+    item.onclick=()=>{document.getElementById('notationInput').value=r.notation;if(r.label)document.getElementById('labelInput').value=r.label};
+    item.innerHTML=`<div class="h-left">
+      <span class="h-notation">${r.notation.toUpperCase()}</span>
+      ${r.label?`<span class="h-lbl">${r.label}</span>`:''}
+      <span class="h-break">${r.breakdown}</span>
+    </div><span class="h-total">${r.total}</span>`;
+    list.appendChild(item);
+  });
+}
+function clearHistory(){rollHistory=[];renderHistory()}
+
+// ══════════════════════════════════════════════
+// COMBAT TRACKER
+// ══════════════════════════════════════════════
+let combatants=[],currentTurn=0,round=1;
+
+function addCombatant(type){
+  const id=Date.now();
+  combatants.push({id,type,name:'',init:10,hp:20,maxHp:20,ac:13});
+  const last=combatants[combatants.length-1];
+  const pcCount=combatants.filter(c=>c.type==='pc').length;
+  const enCount=combatants.filter(c=>c.type==='enemy').length;
+  const npCount=combatants.filter(c=>c.type==='npc').length;
+  last.name=type==='pc'?'Player '+pcCount:type==='enemy'?'Enemy '+enCount:'NPC '+npCount;
+  renderCombat();updateCombatTarget();
+}
+
+function renderCombat(){
+  const list=document.getElementById('combatantList');list.innerHTML='';
+  combatants.forEach((c,i)=>{
+    const isActive=i===currentTurn;
+    const pct=Math.max(0,Math.min(1,c.hp/c.maxHp));
+    const hpCol=pct>.6?'#6fcf6f':pct>.3?'#c9a030':'#e05050';
+    const row=document.createElement('div');
+    row.className='combatant-row'+(isActive?' active-turn':'');row.dataset.id=c.id;
+    row.innerHTML=`
+      <input class="comb-init" type="number" value="${c.init}" title="Initiative" onchange="updateCombField(${c.id},'init',this.value)"/>
+      <input class="comb-name" type="text" value="${c.name}" onchange="updateCombField(${c.id},'name',this.value)"/>
+      <div class="comb-row-fields">
+        <div class="hp-wrap">
+          <input class="hp-cur" type="number" value="${c.hp}" title="Current HP" onchange="updateCombField(${c.id},'hp',this.value)"/>
+          <span class="hp-sep">/</span>
+          <input class="hp-max" type="number" value="${c.maxHp}" title="Max HP" onchange="updateCombField(${c.id},'maxHp',this.value)"/>
+        </div>
+        <div class="hp-bar-wrap"><div class="hp-bar" style="width:${pct*100}%;background:${hpCol}"></div></div>
+        <input class="comb-ac" type="number" value="${c.ac}" title="AC" onchange="updateCombField(${c.id},'ac',this.value)"/>
+        <select class="comb-type type-${c.type}" onchange="updateCombField(${c.id},'type',this.value)">
+          <option value="pc" ${c.type==='pc'?'selected':''}>PC</option>
+          <option value="enemy" ${c.type==='enemy'?'selected':''}>Enemy</option>
+          <option value="npc" ${c.type==='npc'?'selected':''}>NPC</option>
+        </select>
+        <button class="comb-dmg-btn" onclick="quickHP(${c.id},-1)">−</button>
+        <button class="comb-heal-btn" onclick="quickHP(${c.id},1)">+</button>
+        <button class="comb-del" onclick="removeCombatant(${c.id})">✕</button>
+      </div>`;
+    list.appendChild(row);
+  });
+  document.getElementById('roundDisplay').textContent='Round '+round;
+}
+
+function updateCombField(id,field,val){
+  const c=combatants.find(x=>x.id===id);if(!c)return;
+  c[field]=isNaN(+val)?val:+val;
+  if(field==='hp'&&c.hp>c.maxHp)c.hp=c.maxHp;
+  if(field==='maxHp'&&c.hp>c.maxHp)c.hp=c.maxHp;
+  renderCombat();updateCombatTarget();
+}
+
+function quickHP(id,dir){
+  const c=combatants.find(x=>x.id===id);if(!c)return;
+  const amt=parseInt(document.getElementById('combAmount').value)||5;
+  c.hp=Math.max(0,Math.min(c.maxHp,c.hp+dir*amt));
+  renderCombat();
+}
+
+function removeCombatant(id){
+  const idx=combatants.findIndex(x=>x.id===id);
+  combatants.splice(idx,1);
+  if(currentTurn>=combatants.length)currentTurn=0;
+  renderCombat();updateCombatTarget();
+}
+
+function sortByInit(){combatants.sort((a,b)=>b.init-a.init);currentTurn=0;renderCombat()}
+
+function nextTurn(){
+  currentTurn=(currentTurn+1)%Math.max(1,combatants.length);
+  if(currentTurn===0)round++;
+  renderCombat();
+}
+
+async function rollAllInit(){
+  for(const c of combatants){
+    try{
+      const res=await fetch('/roll/d20',{headers:{'Content-Type':'application/json'}});
+      const data=await res.json();c.init=data.total;
+    }catch{c.init=Math.floor(Math.random()*20)+1}
+  }
+  sortByInit();
+}
+
+function updateCombatTarget(){
+  const sel=document.getElementById('combTargetSel');sel.innerHTML='<option value="">— select —</option>';
+  combatants.forEach(c=>{const o=document.createElement('option');o.value=c.id;o.textContent=c.name;sel.appendChild(o)});
+}
+
+function applyDmg(){
+  const id=+document.getElementById('combTargetSel').value;
+  const amt=+document.getElementById('combAmount').value;
+  if(!id||!amt)return;
+  const c=combatants.find(x=>x.id===id);if(!c)return;
+  c.hp=Math.max(0,c.hp-amt);
+  if(c.hp===0)showToast(`${c.name} has fallen!`);
+  renderCombat();
+}
+
+function applyHeal(){
+  const id=+document.getElementById('combTargetSel').value;
+  const amt=+document.getElementById('combAmount').value;
+  if(!id||!amt)return;
+  const c=combatants.find(x=>x.id===id);if(!c)return;
+  c.hp=Math.min(c.maxHp,c.hp+amt);renderCombat();
+}
+
+async function rollAndApplyDmg(){
+  const notation=document.getElementById('combDmgNotation').value.trim();
+  const id=+document.getElementById('combTargetSel').value;
+  if(!notation){showToast('Enter damage notation');return}
+  try{
+    const res=await fetch('/roll',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({notation,label:'Damage'})});
+    const data=await res.json();
+    if(!res.ok){showToast(data.detail||'Roll failed');return}
+    document.getElementById('combAmount').value=data.total;
+    if(id)applyDmg();
+    else showToast(`Rolled ${data.total} damage — select a target to apply`);
+  }catch{showToast('Connection error')}
+}
+
+function resetCombat(){combatants=[];currentTurn=0;round=1;renderCombat();updateCombatTarget()}
+
+// ══════════════════════════════════════════════
+// CONDITIONS
+// ══════════════════════════════════════════════
+const CONDITIONS=[
+  {name:'Blinded',icon:'👁',desc:'Auto-fail sight checks. Attacks have disadvantage; attacks against have advantage.'},
+  {name:'Charmed',icon:'💕',desc:'Cannot attack charmer. Charmer has advantage on social ability checks.'},
+  {name:'Deafened',icon:'🔇',desc:'Cannot hear. Auto-fail hearing checks.'},
+  {name:'Exhaustion',icon:'😓',desc:'Cumulative effects from level 1–6; level 6 is death.'},
+  {name:'Frightened',icon:'😨',desc:'Disadvantage on checks/attacks while source is in sight. Cannot willingly move closer.'},
+  {name:'Grappled',icon:'🤼',desc:'Speed is 0. Ends if grappler is incapacitated or creature is removed from reach.'},
+  {name:'Incapacitated',icon:'💀',desc:'Cannot take actions or reactions.'},
+  {name:'Invisible',icon:'👻',desc:'Impossible to see without special sense. Attacks have advantage; attacks against have disadvantage.'},
+  {name:'Paralyzed',icon:'⚡',desc:'Incapacitated, cannot move or speak. Attacks against have advantage. Auto-fail Str/Dex saves.'},
+  {name:'Petrified',icon:'🪨',desc:'Transformed to stone. Incapacitated, weight x10, immune to poison/disease.'},
+  {name:'Poisoned',icon:'🧪',desc:'Disadvantage on attack rolls and ability checks.'},
+  {name:'Prone',icon:'⬇',desc:'Must crawl or spend half speed to stand. Disadvantage on attacks. Melee attacks within 5ft have advantage; ranged have disadvantage.'},
+  {name:'Restrained',icon:'⛓',desc:'Speed 0. Attack rolls have disadvantage. Dex saves have disadvantage.'},
+  {name:'Stunned',icon:'💫',desc:'Incapacitated, cannot move, can speak haltingly. Auto-fail Str/Dex saves. Attacks against have advantage.'},
+  {name:'Unconscious',icon:'💤',desc:'Incapacitated, drop everything, fall prone, fail Str/Dex saves. Attacks have advantage; hits within 5ft are critical.'},
+  {name:'Concentration',icon:'🧠',desc:'Lose concentration on taking damage (DC 10 or half damage), incapacitation, death, or casting another concentration spell.'},
+];
+let activeConditions=new Set();
+
+function buildConditions(){
+  const grid=document.getElementById('conditionsGrid');
+  CONDITIONS.forEach(c=>{
+    const card=document.createElement('div');card.className='cond-card';card.dataset.name=c.name;
+    card.innerHTML=`<div class="cond-icon">${c.icon}</div><div class="cond-name">${c.name}</div><div class="cond-desc">${c.desc}</div>`;
+    card.onclick=()=>toggleCondition(c.name);
+    grid.appendChild(card);
+  });
+}
+
+function toggleCondition(name){
+  if(activeConditions.has(name))activeConditions.delete(name);
+  else activeConditions.add(name);
+  document.querySelector(`.cond-card[data-name="${name}"]`)?.classList.toggle('active',activeConditions.has(name));
+  renderActiveConditions();
+}
+
+function renderActiveConditions(){
+  const list=document.getElementById('activeCondList');
+  if(!activeConditions.size){list.innerHTML='<span style="font-style:italic;color:var(--ink3);font-size:12px">No conditions active — click below to add</span>';return}
+  list.innerHTML='';
+  activeConditions.forEach(name=>{
+    const c=CONDITIONS.find(x=>x.name===name);
+    const tag=document.createElement('div');tag.className='active-cond-tag';tag.title='Click to remove';
+    tag.innerHTML=`${c.icon} ${name} ✕`;tag.onclick=()=>toggleCondition(name);
+    list.appendChild(tag);
+  });
+}
+
+// ══════════════════════════════════════════════
+// TOOLS
+// ══════════════════════════════════════════════
+function calcSpellDC(){
+  const prof=+document.getElementById('spellProf').value||3;
+  const mod=+document.getElementById('spellMod').value||5;
+  const dc=8+prof+mod;
+  document.getElementById('spellDcResult').innerHTML=`<span class="big-result">${dc}</span><span class="result-sub">8 + ${prof} (prof) + ${mod} (mod)</span>`;
+}
+function calcAbilMod(){
+  const score=+document.getElementById('abilScore').value||10;
+  const mod=Math.floor((score-10)/2);
+  const sign=mod>=0?'+':'';
+  document.getElementById('abilModResult').innerHTML=`<span class="big-result">${sign}${mod}</span><span class="result-sub">Score ${score} → modifier ${sign}${mod}</span>`;
+}
+async function doAttackRoll(){
+  const bonus=+document.getElementById('atkBonus').value||0;
+  const ac=+document.getElementById('atkAC').value||10;
+  const mode=document.getElementById('atkMode').value;
+  const notation=mode==='adv'?'2d20kh1':mode==='dis'?'2d20kl1':'d20';
+  try{
+    const res=await fetch('/roll',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({notation,label:'Attack'})});
+    const data=await res.json();if(!res.ok)return;
+    const dieRoll=data.total;const total=dieRoll+bonus;
+    const natMax=data.dice_results.some(d=>d.value===20&&d.kept);
+    const natMin=data.dice_results.some(d=>d.value===1&&d.kept&&data.dice_results.filter(x=>x.kept).length===1);
+    let outcome,col;
+    if(natMax){outcome='CRITICAL HIT!';col='#ffe97a'}
+    else if(natMin){outcome='CRITICAL MISS';col='#e05050'}
+    else if(total>=ac){outcome='HIT';col='#6fcf6f'}
+    else{outcome='MISS';col='#e05050'}
+    document.getElementById('atkResult').innerHTML=`<span style="font-family:'Cinzel Decorative',serif;font-size:22px;color:${col}">${outcome}</span><br><span style="font-size:11px;color:var(--ink3)">Rolled ${dieRoll} + ${bonus} = ${total} vs AC ${ac}</span>`;
+  }catch{showToast('Connection error')}
+}
+
+// Death saves
+let deathSuccesses=0,deathFailures=0;
+function buildDeathSaves(){
+  const succEl=document.getElementById('deathSucc'),failEl=document.getElementById('deathFail');
+  succEl.innerHTML='';failEl.innerHTML='';
+  for(let i=0;i<3;i++){
+    const s=document.createElement('div');s.style.cssText=`width:18px;height:18px;border-radius:50%;border:1.5px solid ${i<deathSuccesses?'#6fcf6f':'rgba(111,207,111,.3)'};background:${i<deathSuccesses?'rgba(111,207,111,.25)':'transparent'};cursor:pointer;transition:all .2s`;
+    s.onclick=()=>{deathSuccesses=Math.min(3,deathSuccesses+(deathSuccesses>i?-1:1));renderDeathSaves()};
+    succEl.appendChild(s);
+    const f=document.createElement('div');f.style.cssText=`width:18px;height:18px;border-radius:50%;border:1.5px solid ${i<deathFailures?'var(--red-l)':'rgba(224,80,80,.3)'};background:${i<deathFailures?'rgba(224,80,80,.2)':'transparent'};cursor:pointer;transition:all .2s`;
+    f.onclick=()=>{deathFailures=Math.min(3,deathFailures+(deathFailures>i?-1:1));renderDeathSaves()};
+    failEl.appendChild(f);
+  }
+  const res=document.getElementById('deathResult');
+  if(deathSuccesses>=3){res.innerHTML='<span style="color:#6fcf6f;font-family:Cinzel Decorative,serif">STABLE ✓</span>'}
+  else if(deathFailures>=3){res.innerHTML='<span style="color:#e05050;font-family:Cinzel Decorative,serif">DEAD ✕</span>'}
+  else res.textContent='';
+}
+function renderDeathSaves(){buildDeathSaves()}
+async function deathSave(){
+  try{
+    const res=await fetch('/roll/d20');const data=await res.json();if(!res.ok)return;
+    const roll=data.total;let msg,col;
+    if(roll===1){deathFailures=Math.min(3,deathFailures+2);msg=`Rolled 1 — two failures!`;col='#e05050'}
+    else if(roll===20){deathSuccesses=0;deathFailures=0;msg=`Rolled 20 — regain 1 HP!`;col='#ffe97a'}
+    else if(roll>=10){deathSuccesses=Math.min(3,deathSuccesses+1);msg=`Rolled ${roll} — success`;col='#6fcf6f'}
+    else{deathFailures=Math.min(3,deathFailures+1);msg=`Rolled ${roll} — failure`;col='#e05050'}
+    document.getElementById('deathResult').innerHTML=`<span style="color:${col}">${msg}</span>`;
+    renderDeathSaves();
+  }catch{showToast('Connection error')}
+}
+function resetDeath(){deathSuccesses=0;deathFailures=0;buildDeathSaves()}
+
+// Concentration
+async function doConcentration(){
+  const dmg=+document.getElementById('concDmg').value||1;
+  const mod=+document.getElementById('concMod').value||0;
+  const prof=+document.getElementById('concProf').value||0;
+  const dc=Math.max(10,Math.floor(dmg/2));
+  try{
+    const res=await fetch('/roll',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({notation:'d20',label:'Concentration'})});
+    const data=await res.json();if(!res.ok)return;
+    const total=data.total+mod+prof;const success=total>=dc;
+    document.getElementById('concResult').innerHTML=`<span style="font-family:'Cinzel Decorative',serif;font-size:20px;color:${success?'#6fcf6f':'#e05050'}">${success?'MAINTAINED':'BROKEN'}</span><br><span style="font-size:11px;color:var(--ink3)">Rolled ${data.total}+${mod+prof}=${total} vs DC ${dc}</span>`;
+  }catch{showToast('Connection error')}
+}
+
+// Exhaustion
+const EXHAUSTION_EFFECTS=['Normal — no effect','Disadvantage on ability checks','Speed halved','Disadvantage on attacks and saves','Max HP halved','Speed reduced to 0','Death'];
+let exhaustionLevel=0;
+function buildExhaustion(){
+  const el=document.getElementById('exhaustionBtns');el.innerHTML='';
+  for(let i=0;i<=6;i++){
+    const b=document.createElement('button');b.className='pctrl-btn';
+    b.textContent='Level '+i;b.style.borderColor=i===exhaustionLevel?'var(--gold)':'var(--border)';
+    b.style.color=i===exhaustionLevel?'var(--gold-l)':'var(--ink3)';
+    b.onclick=()=>{exhaustionLevel=i;buildExhaustion()};
+    el.appendChild(b);
+  }
+  const col=exhaustionLevel===0?'var(--ink2)':exhaustionLevel<=2?'var(--gold)':exhaustionLevel<=4?'#e09030':'#e05050';
+  document.getElementById('exhaustionResult').innerHTML=`<span style="font-family:'Cinzel',serif;font-size:11px;color:${col};letter-spacing:1px">LEVEL ${exhaustionLevel}</span><br><span style="font-size:12px;font-style:italic;color:var(--ink3)">${EXHAUSTION_EFFECTS[exhaustionLevel]}</span>`;
+}
+
+// Spell DC live update
+document.addEventListener('input',e=>{
+  if(['spellProf','spellMod'].includes(e.target.id))calcSpellDC();
+  if(e.target.id==='abilScore')calcAbilMod();
+});
+
+// ══════════════════════════════════════════════
+// UTILITIES
+// ══════════════════════════════════════════════
+function show(id){document.getElementById(id).style.display='block'}
+function hide(id){document.getElementById(id).style.display='none'}
+function showToast(msg){
+  const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),3200);
+}
+document.addEventListener('keydown',e=>{
+  if(e.key==='Enter'&&!['labelInput','combAmount','combDmgNotation'].includes(document.activeElement?.id))doRoll();
+  if(e.key==='Escape')hideCtx();
+});
+
+// ══════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════
+buildPalette();
+buildConditions();
+buildDeathSaves();
+buildExhaustion();
+calcSpellDC();
+calcAbilMod();
+// Seed combat with sample
+addCombatant('pc');addCombatant('enemy');
+combatants[0].name='Theron Ashblade';combatants[0].hp=42;combatants[0].maxHp=42;combatants[0].ac=16;combatants[0].init=18;
+combatants[1].name='Goblin Chief';combatants[1].hp=21;combatants[1].maxHp=21;combatants[1].ac=13;combatants[1].init=11;
+sortByInit();updateCombatTarget();
+</script>
+
+<div class="api-footer">
+  <p>Direct API access available</p>
+  <a href="/docs" class="api-pill" target="_blank"><span class="dot"></span>Swagger Docs — /docs</a>
+  &nbsp;
+  <a href="/roll/d20" class="api-pill" target="_blank"><span class="dot"></span>Try: /roll/d20</a>
+</div>
+
+</body>
+</html>
