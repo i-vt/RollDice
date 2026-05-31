@@ -1,4 +1,5 @@
 # ⚄ Arcane Dice — DnD Dice Roller
+<img width="939" height="693" alt="image" src="https://github.com/user-attachments/assets/d4624eb9-16cf-4f14-bbd1-14e8b0ddba28" />
 
 A full-stack DnD dice rolling application with a REST API, animated web UI, and complete Docker setup.
 
